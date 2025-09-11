@@ -1,0 +1,14 @@
+.ipynb_checkpoints
+__pycache__
+
+datasets/cifar-10-batches-py/*
+datasets/MNIST/*
+running_logs/*
+
+*.npz
+*.zip
+*.tex
+*.csv
+*.pdf
+*.txt
+

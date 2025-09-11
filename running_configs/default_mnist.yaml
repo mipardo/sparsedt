@@ -1,0 +1,18 @@
+environment: cpu
+training:
+  epochs: 10
+  batch_size: 64
+  loss_function: cce
+  checkpoint_interval: 0 
+model:
+  name: simplecnn
+  num_classes: 10
+dataset:
+  name: mnist
+  val_split: 0.2
+optimizer:
+  name: ssgd
+  params:
+    learning_rate: 0.01
+    momentum: 0.9
+    weight_decay: 0.0005

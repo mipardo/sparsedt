@@ -1,0 +1,22 @@
+# This template is just to simplify the creation of new running configs
+# The validation of the running config parameters is performed in utils.report.py with pydantic, not in this file
+# So if you are thinking in adding new running config parameters, remember to add them in the utils.report.py 
+
+environment: str # cpu/gpu
+training:
+  epochs: int
+  batch_size: int
+  loss_function: str
+  checkpoint_interval: int 
+model:
+  name: str
+  num_classes: int
+dataset:
+  name: str
+  val_split: float # 0.0 <= val_split >= 1.0
+optimizer:
+  name: str
+  params:
+    learning_rate: float
+    momentum: float
+    weight_decay: float
