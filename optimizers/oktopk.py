@@ -23,6 +23,7 @@ class OkTopk(Optimizer):
         self.all_global_th = {}
         self.all_residuals = {}
         self.all_boundaries = {}
+        self.info_messages = set()
         self.comm = MPI.COMM_WORLD
 
         for group_id, group in enumerate(self.param_groups):
@@ -121,6 +122,8 @@ class OkTopk(Optimizer):
         Returns:
             (void): instead it directly applies the result to the weight layer attribute
         """
+        
+        self._show_message_only_once(f"In '_update_weights', the method that it is being used is '{method}'")
         
         if method == "dense":
             grads = coo_u.to_dense()
@@ -228,6 +231,8 @@ class OkTopk(Optimizer):
         Returns:
             boundaries (torch.Tensor): [end_p0, end_p1, end_p2, ...]
         """
+        
+        self._show_message_only_once(f"In '_space_repartition', balanced = '{balanced}' is being used")
         
         if not balanced:
             boundaries = torch.zeros(self.comm.size, dtype=torch.int64)
@@ -395,6 +400,8 @@ class OkTopk(Optimizer):
             coo_reduced_region (SparseTensorCOO): The reduced topk values in COO format.
         """
         
+        self._show_message_only_once(f"In '_reduce_topk', the method that it is being used is '{method}'")
+        
         if self.comm.size == 1:
             return coo_topk
 
@@ -499,3 +506,18 @@ class OkTopk(Optimizer):
                 if layer_params.grad is not None:
                     self.comm.Allreduce(MPI.IN_PLACE, layer_params.grad.data, op=MPI.SUM)
                     layer_params.grad.data /= self.comm.size
+        
+    
+    def _show_message_only_once(self, message):
+        """
+        Show information messages only once to assess the selected functions are being used.
+        
+        Parameters:
+            message (str): The message to show.
+        Returns:
+            void (None):
+        """
+        if self.comm.rank == 0:
+            if message not in self.info_messages:
+                self.info_messages.add(message)
+                print(message)
