@@ -113,7 +113,7 @@ class OkTopk(Optimizer):
             return acc
     
     
-    def _update_weights(self, coo_u, weight_decay, momentum, learning_rate, params, method="dense"):
+    def _update_weights(self, coo_u, weight_decay, momentum, learning_rate, params, method="sparse"):
         """
         Update weights: w -= (u / self.comm.size) 
 
@@ -142,6 +142,31 @@ class OkTopk(Optimizer):
                 grads = buf
             # Update parameters
             params.data.add_(grads, alpha=-learning_rate)
+
+        elif method == "sparse":
+            w = params.data.view(-1)
+
+            # 1) Weight decay desacoplado (AdamW-style): w <- (1 - lr*wd) * w
+            if weight_decay != 0:
+                w.mul_(1.0 - learning_rate * weight_decay)
+
+            # 2) Momentum disperso (solo en índices tocados)
+            if momentum != 0:
+                state = self.state[params]
+                if "momentum_buffer" not in state:
+                    state["momentum_buffer"] = torch.zeros_like(w)
+                m = state["momentum_buffer"]
+
+                # m_i = momentum * m_i + g_i  (solo para i en idx)
+                m_sel = m.gather(0, coo_u.indexes)                  # leer m en idx
+                m_sel.mul_(momentum).add_(coo_u.values)              # actualizar seleccionados
+                m.index_copy_(0, coo_u.indexes, m_sel)              # escribir de vuelta
+                g_to_apply = m_sel
+            else:
+                g_to_apply = coo_u.values
+
+            # 3) Actualización dispersa: w[idx] -= lr * g_to_apply (suma si hay duplicados)
+            w.index_add_(0, coo_u.indexes, g_to_apply, alpha=-learning_rate)
             
         else:
             raise NotImplementedError(f"Method {method} not yet implemented in _update_weights")
