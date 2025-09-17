@@ -174,8 +174,6 @@ def compute_additional_params(launch_params, device, model, loss_function, optim
 if __name__ == "__main__":
     # Initialize MPI
     comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
     
     # All processes load launch_params    
     parser = argparse.ArgumentParser(prog="train_distributed")
