@@ -151,6 +151,22 @@ def evaluate(model, loader, criterion, device, desc, comm):
 
 
 def compute_additional_params(launch_params, device, model, loss_function, optimizer, train_loader, val_loader, test_loader, comm):
+    """Compute additional parameters such as number of train_samples, val_samples, and so on
+
+    Args:
+        launch_params (LaunchParams): current params configuration 
+        device (torch.device): the device to run the evaluation
+        model (torch.nn.Module): the model to be evaluated
+        loss_function (torch.nn.modules.loss): loss function (e.g., nn.CrossEntropyLoss)
+        optimizer (torch.optim): optimizer used to update the model params (e.g., torch.optim.SGD)
+        train_loader (torch.utils.data.DataLoader): train dataset loader
+        val_loader (torch.utils.data.DataLoader): validation dataset loader
+        test_loader (torch.utils.data.DataLoader): test dataset loader
+        comm (MPI.Comm): MPI communicator (typically MPI.COMM_WORLD).
+
+    Returns:
+        tuple (float, float): average loss and accuracy    
+    """    
     local_train_samples = len(train_loader) * launch_params.training.batch_size
     train_samples = comm.allreduce(local_train_samples, op=MPI.SUM)
     val_samples = len(val_loader) * launch_params.training.batch_size
