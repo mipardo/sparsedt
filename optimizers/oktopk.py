@@ -158,9 +158,9 @@ class OkTopk(Optimizer):
                 m = state["momentum_buffer"]
 
                 # m_i = momentum * m_i + g_i  (solo para i en idx)
-                m_sel = m.gather(0, coo_u.indexes)                  # leer m en idx
-                m_sel.mul_(momentum).add_(coo_u.values)              # actualizar seleccionados
-                m.index_copy_(0, coo_u.indexes, m_sel)              # escribir de vuelta
+                m_sel = m.gather(0, coo_u.indexes)                  
+                m_sel.mul_(momentum).add_(coo_u.values)              
+                m.index_copy_(0, coo_u.indexes, m_sel)              
                 g_to_apply = m_sel
             else:
                 g_to_apply = coo_u.values
