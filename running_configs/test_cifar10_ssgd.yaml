@@ -1,14 +1,14 @@
 environment: cpu
 training:
-  epochs: 10
+  epochs: 5
   batch_size: 64
   loss_function: cce
   checkpoint_interval: 0 
 model:
-  name: simplecnn
+  name: vgg16
   num_classes: 10
 dataset:
-  name: mnist
+  name: cifar10
   val_split: 0.2
 optimizer:
   name: ssgd

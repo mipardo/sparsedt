@@ -11,8 +11,11 @@ dataset:
   name: cifar10
   val_split: 0.2
 optimizer:
-  name: sgd
+  name: oktopk
   params:
     learning_rate: 0.01
     momentum: 0.9
     weight_decay: 0.0005
+    density: 0.1
+    tau: 32
+    tau_prime: 64
