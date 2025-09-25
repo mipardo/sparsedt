@@ -243,7 +243,7 @@ class OkTopk(Optimizer):
             return threshold
     
     
-    def _space_repartition(self, acc, local_th, balanced=False):
+    def _space_repartition(self, acc, local_th, balanced=True):
         """
         Returns the boundaries of the regions of the gradient matrix for the split and reduce phase.
         
@@ -269,32 +269,27 @@ class OkTopk(Optimizer):
             return boundaries
         
         elif balanced:
-            raise NotImplementedError
             coo_topk = SparseTensorCOO.from_dense_top_selection(acc, local_th)
             
-            current_row = 0
-            current_proc = 0
-            rows = coo_topk.row 
-            topk_in_current_proc = 0
-            total_rows = coo_topk.shape[0]
-            boundaries = torch.zeros(self.comm.size, dtype=np.int32)
+            proc, idx, topk_in_proc = 0, 0, 0
+            total_dense_values = torch.numel(acc)
             topk_per_proc = coo_topk.nnz // self.comm.size
-            topk_per_row = torch.zeros(total_rows, dtype=np.int32)
-            np.add.at(topk_per_row, rows, 1)
+            boundaries = torch.zeros(self.comm.size, dtype=torch.int32)
+            idx_counter = torch.zeros(total_dense_values, dtype=torch.int32)
+            idx_counter.index_add_(0, coo_topk.indexes, torch.ones_like(coo_topk.indexes, dtype=torch.int))
 
-            while current_proc < self.comm.size - 1:
-                if current_row < total_rows:
-                    topk_in_current_proc += topk_per_row[current_row]
-                    if topk_in_current_proc >= topk_per_proc:
-                        boundaries[current_proc] = current_row 
-                        topk_in_current_proc = 0
-                        current_proc += 1
-                    current_row += 1
+            while proc < self.comm.size - 1:
+                if idx < total_dense_values:
+                    topk_in_proc += idx_counter[idx]
+                    if topk_in_proc >= topk_per_proc:
+                        boundaries[proc] = idx 
+                        topk_in_proc = 0
+                        proc += 1
+                    idx += 1
                 else:
-                    boundaries[current_proc] = current_row 
-                    current_proc += 1
-            boundaries[self.comm.size - 1] = total_rows
-
+                    boundaries[proc] = idx 
+                    proc += 1
+            boundaries[self.comm.size - 1] = total_dense_values
             global_boundaries = self.comm.allreduce(boundaries, op=MPI.SUM) // self.comm.size
             
             return global_boundaries
