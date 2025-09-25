@@ -395,22 +395,8 @@ class OkTopk(Optimizer):
             - output: torch.Tensor([1, 4])  
         """
         
-        local_i, global_i, intersected_i = 0, 0, 0
-        max_size = min(len(local_topk_indexes), len(global_topk_indexes))
-        intersected_indexes = torch.zeros(max_size, dtype=torch.int64)
-        
-        while local_i < len(local_topk_indexes) and global_i < len(global_topk_indexes):    
-            if local_topk_indexes[local_i] == global_topk_indexes[global_i]:
-                intersected_indexes[intersected_i] = local_topk_indexes[local_i]
-                intersected_i += 1
-                global_i += 1 
-                local_i += 1
-            elif local_topk_indexes[local_i] < global_topk_indexes[global_i]:
-                local_i += 1
-            else:
-                global_i += 1
-        return intersected_indexes[:intersected_i]
-
+        return local_topk_indexes[torch.searchsorted(local_topk_indexes, global_topk_indexes)]
+    
         
     def _reduce_topk(self, coo_topk, boundaries, method="p2p_region_wise_reduce_destination_rotation_and_bucketing"):
         """
