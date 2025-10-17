@@ -449,7 +449,23 @@ class OkTopk(Optimizer):
                                                                              dest=destination, source=receive_from)
             
             return coo_region_partial_sum[self.comm.rank]  
-
+        
+        
+        if method == "all2all":
+            # Prepare a vector region for storing the partial sums
+            coo_region_partial_sum = [None] * self.comm.size
+            for region in range(self.comm.size):
+                region_start = 0 if region == 0 else boundaries[region - 1]
+                region_end = boundaries[region]
+                coo_region_partial_sum[region] = coo_topk.slice(region_start, region_end)
+            
+            my_region = coo_region_partial_sum[self.comm.rank]
+            coo_region_partial_sum[self.comm.rank] = None
+            coo_region = self.comm.alltoall(coo_region_partial_sum)
+            coo_region[self.comm.rank] = my_region
+            return sum(coo_region)
+            
+        
         if method == "p2p_region_wise_reduce_destination_rotation_and_bucketing":
             # There are (nprocs - 1) messages to send (excluding self)
             total_sends = self.comm.size - 1
