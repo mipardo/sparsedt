@@ -13,6 +13,6 @@ dataset:
 optimizer:
   name: ssgd
   params:
-    learning_rate: 0.01
+    learning_rate: 0.00001
     momentum: 0.9
     weight_decay: 0.0005

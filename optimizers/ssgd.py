@@ -31,7 +31,6 @@ class SSGD(Optimizer):
                     layer_params.data.add_(grads, alpha=-group['lr'])
 
 
-
     def zero_grad(self):
         for group in self.param_groups:
             for p in group['params']:

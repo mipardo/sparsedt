@@ -11,7 +11,9 @@ class SparseTensorCOO:
     The sparse tensor is assumed to be sorted.
     This class is not designed to store explict zeros so, len(self.values) should always be equal to nnz. 
     """
-
+    
+    __slots__ = "values", "indexes", "nnz", "shape", "has_canonical_format"
+    
     def __init__(self, values, indexes, shape, has_canonical_format):
         """
         Primary initializer for SparseTensorCOO.
@@ -158,6 +160,10 @@ class SparseTensorCOO:
         if not self.has_canonical_format or not other.has_canonical_format:
             raise AssertionError("Both matrices must be in canonical format.")
 
+        # values = torch.clamp(torch.randn(self.nnz + other.nnz), -1, 1)
+        # indexes = torch.tensor(range(self.nnz + other.nnz), dtype=torch.int64)
+        # indexes = torch.tensor(range(self.nnz + other.nnz), dtype=torch.int64)
+        # return SparseTensorCOO(values, indexes, self.shape, has_canonical_format=True)
 
         self_i, other_i, summ_i = 0, 0, 0
         summ_values = torch.zeros(self.nnz + other.nnz)

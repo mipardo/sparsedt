@@ -217,7 +217,7 @@ if __name__ == "__main__":
     # All processes initialize the Logger
     logger = Logger(launch_params, computed_params, launch_tag, verbose, comm)
     # Only process 0 performs the test, as all processes have the same model
-    test(model, test_loader, loss_function, device, logger, comm, post_training=False)
+    # test(model, test_loader, loss_function, device, logger, comm, post_training=False)
     # All processes perform the training
     train(model, train_loader, val_loader, loss_function, optimizer, device, logger, launch_params, comm)
     # Only process 0 performs the final test, as all processes should have the same final model

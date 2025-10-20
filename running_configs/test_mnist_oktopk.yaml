@@ -13,10 +13,11 @@ dataset:
 optimizer:
   name: oktopk
   params:
-    learning_rate: 0.01
+    learning_rate: 0.001
     momentum: 0.9
     weight_decay: 0.0005
-    density: 0.1
+    density: 0.05
+    min_k_layer: 10
     tau: 32
     tau_prime: 64
 

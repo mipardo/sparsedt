@@ -6,14 +6,15 @@ from utils.sparse import SparseTensorCOO
 
 
 class OkTopk(Optimizer):
-    def __init__(self, model_params, lr, momentum, weight_decay, density, tau, tau_prime):
+    def __init__(self, model_params, lr, momentum, weight_decay, density, min_k_layer, tau, tau_prime):
         super().__init__(
             model_params, 
             defaults={
                 "lr": lr, 
-                "momentum":momentum, 
+                "momentum" :momentum, 
                 "weight_decay": weight_decay, 
                 "density":density, 
+                "min_k_layer": min_k_layer,
                 "tau": tau, 
                 "tau_prime":tau_prime
             })
@@ -46,6 +47,7 @@ class OkTopk(Optimizer):
                     
                     # Compute k from: layer_params * self.density
                     k = int(torch.numel(grads) * group["density"])
+                    k = group["min_k_layer"] if k < group["min_k_layer"] else k
                     
                     # Initialize current layer-parameter values
                     self.local_th = self.all_local_th[group_id][layer_id]
@@ -243,7 +245,7 @@ class OkTopk(Optimizer):
             return threshold
     
     
-    def _space_repartition(self, acc, local_th, balanced=True):
+    def _space_repartition(self, acc, local_th, balanced=False):
         """
         Returns the boundaries of the regions of the gradient matrix for the split and reduce phase.
         
@@ -389,11 +391,33 @@ class OkTopk(Optimizer):
             - global_indexes = torch.Tensor([1, 4, 6, 7, 9])
             - output: torch.Tensor([1, 4])  
         """
+        try:
+            combined = torch.cat((local_topk_indexes, global_topk_indexes))
+            uniques, counts = combined.unique(return_counts=True)
+            intersection = uniques[counts > 1]
+            return intersection
+        except:
+            print(local_topk_indexes.shape, local_topk_indexes)
+            print(global_topk_indexes.shape, global_topk_indexes)
+        # local_i, global_i, intersect_i = 0, 0, 0
+        # print(local_topk_indexes, len(local_topk_indexes))
+        # print(global_topk_indexes, len(global_topk_indexes))
+        # max_intersection_size = min(len(local_topk_indexes), len(global_topk_indexes))
+        # intersect_topk_indexes = torch.zeros(max_intersection_size, dtype=torch.int64)
+        # while local_i < max_intersection_size and global_i < max_intersection_size:    
+        #     if local_topk_indexes[local_i] == global_topk_indexes[global_i]:
+        #         intersect_topk_indexes[intersect_i] = local_topk_indexes[local_i]
+        #         intersect_i += 1
+        #         global_i += 1 
+        #         local_i += 1
+        #     elif local_topk_indexes[local_i] < global_topk_indexes[global_i]:
+        #         local_i += 1
+        #     else:
+        #         global_i += 1
+        # return intersect_topk_indexes[:intersect_i + 1]
+            
         
-        return local_topk_indexes[torch.searchsorted(local_topk_indexes, global_topk_indexes)]
-    
-        
-    def _reduce_topk(self, coo_topk, boundaries, method="p2p_region_wise_reduce_destination_rotation_and_bucketing"):
+    def _reduce_topk(self, coo_topk, boundaries, method="p2p_region_wise_reduce_static_destination"):
         """
         Reduce the topk elements in regions defined by boundaries.
 
