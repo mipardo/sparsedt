@@ -31,6 +31,7 @@ def get_optimizer(optimizer, params):
             momentum = optimizer_params["momentum"],
             weight_decay = optimizer_params["weight_decay"],
             density=optimizer_params["density"],
+            min_k_layer=optimizer_params["min_k_layer"],
             tau=optimizer_params["tau"],
             tau_prime=optimizer_params["tau_prime"]
         )
