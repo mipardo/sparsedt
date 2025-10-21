@@ -375,7 +375,7 @@ class OkTopk(Optimizer):
         return coo_allgather_topk, coo_reduced_region_global_topk.indexes
     
     
-    def _intersect_indexes(self, local_topk_indexes, global_topk_indexes):
+    def _intersect_indexes(self, local_topk_indexes, global_topk_indexes, method="pytorch"):
         """
         Calculates the intersection of two sets of indices of 1D.
 
@@ -391,30 +391,30 @@ class OkTopk(Optimizer):
             - global_indexes = torch.Tensor([1, 4, 6, 7, 9])
             - output: torch.Tensor([1, 4])  
         """
-        try:
+        
+        self._show_message_only_once(f"In '_intersect_indexes', the method that it is being used is '{method}'")
+
+        if method == "pytorch":
             combined = torch.cat((local_topk_indexes, global_topk_indexes))
             uniques, counts = combined.unique(return_counts=True)
             intersection = uniques[counts > 1]
             return intersection
-        except:
-            print(local_topk_indexes.shape, local_topk_indexes)
-            print(global_topk_indexes.shape, global_topk_indexes)
-        # local_i, global_i, intersect_i = 0, 0, 0
-        # print(local_topk_indexes, len(local_topk_indexes))
-        # print(global_topk_indexes, len(global_topk_indexes))
-        # max_intersection_size = min(len(local_topk_indexes), len(global_topk_indexes))
-        # intersect_topk_indexes = torch.zeros(max_intersection_size, dtype=torch.int64)
-        # while local_i < max_intersection_size and global_i < max_intersection_size:    
-        #     if local_topk_indexes[local_i] == global_topk_indexes[global_i]:
-        #         intersect_topk_indexes[intersect_i] = local_topk_indexes[local_i]
-        #         intersect_i += 1
-        #         global_i += 1 
-        #         local_i += 1
-        #     elif local_topk_indexes[local_i] < global_topk_indexes[global_i]:
-        #         local_i += 1
-        #     else:
-        #         global_i += 1
-        # return intersect_topk_indexes[:intersect_i + 1]
+        
+        elif method == "original":
+            local_i, global_i, intersect_i = 0, 0, 0
+            max_intersection_size = min(len(local_topk_indexes), len(global_topk_indexes))
+            intersect_topk_indexes = torch.zeros(max_intersection_size, dtype=torch.int64)
+            while local_i < max_intersection_size and global_i < max_intersection_size:    
+                if local_topk_indexes[local_i] == global_topk_indexes[global_i]:
+                    intersect_topk_indexes[intersect_i] = local_topk_indexes[local_i]
+                    intersect_i += 1
+                    global_i += 1 
+                    local_i += 1
+                elif local_topk_indexes[local_i] < global_topk_indexes[global_i]:
+                    local_i += 1
+                else:
+                    global_i += 1
+            return intersect_topk_indexes[:intersect_i + 1]
             
         
     def _reduce_topk(self, coo_topk, boundaries, method="p2p_region_wise_reduce_static_destination"):
