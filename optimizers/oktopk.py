@@ -37,7 +37,6 @@ class OkTopk(Optimizer):
         
         
     def step(self):
-        # self.synchronize_grads()
         for group_id, group in enumerate(self.param_groups):
             # For every layer
             for layer_id, layer_params in enumerate(group["params"]):
@@ -229,7 +228,7 @@ class OkTopk(Optimizer):
         """
 
         if k <= 0:
-            return 0.0
+            return 1.0
         
         if input_format == "coo" and tensor.nnz == 0:
             return 1.0
@@ -259,7 +258,7 @@ class OkTopk(Optimizer):
             boundaries (torch.Tensor): [end_p0, end_p1, end_p2, ...]
         """
         
-        self._show_message_only_once(f"In '_space_repartition', balanced = '{balanced}' is being used")
+        self._show_message_only_once(f"\nIn '_space_repartition', balanced = '{balanced}' is being used")
         
         if not balanced:
             boundaries = torch.zeros(self.comm.size, dtype=torch.int64)
@@ -466,9 +465,6 @@ class OkTopk(Optimizer):
             for comm_step in range(1, self.comm.size):
                 region_to_send = (self.comm.rank - comm_step) % self.comm.size
                 region_to_recv = (self.comm.rank - comm_step - 1) % self.comm.size 
-                # recv_req = self.comm.irecv(source=receive_from)
-                # self.comm.send(coo_region_partial_sum[region_to_send], dest=destination)
-                # coo_region_partial_sum[region_to_recv] += recv_req.wait() 
                 coo_region_partial_sum[region_to_recv] += self.comm.sendrecv(coo_region_partial_sum[region_to_send], 
                                                                              dest=destination, source=receive_from)
             
