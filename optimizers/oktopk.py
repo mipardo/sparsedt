@@ -1,8 +1,9 @@
 import torch 
 import warnings
+import numpy as np
 from mpi4py import MPI
 from torch.optim import Optimizer
-from utils.sparse import SparseTensorCOO
+from utils.sparse_np import SparseTensorCOO
 
 
 class OkTopk(Optimizer):
@@ -105,12 +106,15 @@ class OkTopk(Optimizer):
             residuals (torch.Tensor): which is the same as acc with the values in indexes set to zero.
         """
         
+        indexes_tensor = torch.from_numpy(indexes).long().to(acc.device)
+
+        
         with torch.no_grad():
             if self.defaults["density"] == 1:
                 return torch.zeros_like(acc)
             
             if len(indexes) > 0:
-                acc[torch.unravel_index(indexes, acc.shape)] = 0    
+                acc[torch.unravel_index(indexes_tensor, acc.shape)] = 0    
             return acc
     
     
@@ -146,6 +150,10 @@ class OkTopk(Optimizer):
 
         elif method == "sparse":
             w = params.data.view(-1)
+            
+            # Convertir los índices y valores de NumPy a tensores de PyTorch
+            indexes_tensor = torch.from_numpy(coo_u.indexes).long().to(w.device)
+            values_tensor = torch.from_numpy(coo_u.values).to(w.device, dtype=w.dtype)
 
             # 1) Weight decay desacoplado (AdamW-style): w <- (1 - lr*wd) * w
             if weight_decay != 0:
@@ -159,15 +167,15 @@ class OkTopk(Optimizer):
                 m = state["momentum_buffer"]
 
                 # m_i = momentum * m_i + g_i  (solo para i en idx)
-                m_sel = m.gather(0, coo_u.indexes)                  
-                m_sel.mul_(momentum).add_(coo_u.values)              
-                m.index_copy_(0, coo_u.indexes, m_sel)              
+                m_sel = m.gather(0, indexes_tensor)                  
+                m_sel.mul_(momentum).add_(values_tensor)              
+                m.index_copy_(0, indexes_tensor, m_sel)              
                 g_to_apply = m_sel
             else:
-                g_to_apply = coo_u.values
+                g_to_apply = values_tensor
 
             # 3) Actualización dispersa: w[idx] -= lr * g_to_apply (suma si hay duplicados)
-            w.index_add_(0, coo_u.indexes, g_to_apply, alpha=-learning_rate)
+            w.index_add_(0, indexes_tensor, g_to_apply, alpha=-learning_rate)
             
         else:
             raise NotImplementedError(f"Method {method} not yet implemented in _update_weights")
@@ -239,7 +247,7 @@ class OkTopk(Optimizer):
             return threshold
             
         if input_format == "coo":
-            sorted_data, _ = torch.sort(torch.abs(tensor.values))
+            sorted_data = np.sort(np.abs(tensor.values))
             threshold = sorted_data[max(-k, -len(sorted_data))]
             return threshold
     
@@ -334,8 +342,8 @@ class OkTopk(Optimizer):
         
         if input_format == "SparseTensorCOO":
             gathered = self.comm.allgather((local_data.values, local_data.indexes))
-            all_val = torch.concatenate([t[0] for t in gathered])
-            all_ind = torch.concatenate([t[1] for t in gathered])
+            all_val = np.concatenate([t[0] for t in gathered])
+            all_ind = np.concatenate([t[1] for t in gathered])
             return SparseTensorCOO(all_val, all_ind, local_data.shape, has_canonical_format=True)
 
         if input_format == "dense":
@@ -374,7 +382,7 @@ class OkTopk(Optimizer):
         return coo_allgather_topk, coo_reduced_region_global_topk.indexes
     
     
-    def _intersect_indexes(self, local_topk_indexes, global_topk_indexes, method="pytorch"):
+    def _intersect_indexes(self, local_topk_indexes, global_topk_indexes, method="numpy"):
         """
         Calculates the intersection of two sets of indices of 1D.
 
@@ -399,10 +407,10 @@ class OkTopk(Optimizer):
             intersection = uniques[counts > 1]
             return intersection
         
-        elif method == "original":
+        elif method == "numpy":
             local_i, global_i, intersect_i = 0, 0, 0
             max_intersection_size = min(len(local_topk_indexes), len(global_topk_indexes))
-            intersect_topk_indexes = torch.zeros(max_intersection_size, dtype=torch.int64)
+            intersect_topk_indexes = np.zeros(max_intersection_size, dtype=np.int64)
             while local_i < max_intersection_size and global_i < max_intersection_size:    
                 if local_topk_indexes[local_i] == global_topk_indexes[global_i]:
                     intersect_topk_indexes[intersect_i] = local_topk_indexes[local_i]
