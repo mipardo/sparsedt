@@ -16,7 +16,7 @@ optimizer:
     learning_rate: 0.00001
     momentum: 0.9
     weight_decay: 0.0005
-    density: 0.05
+    density: 0.0005
     min_k_layer: 10
     tau: 1024
     tau_prime: 32
