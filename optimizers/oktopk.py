@@ -458,7 +458,7 @@ class OkTopk(Optimizer):
                 region_start = region_end
             return reduced_regions_coo[self.comm.rank]
 
-        if method == "p2p_region_wise_reduce_static_destination":
+        if method == "p2p_region_wise_reduce_static_destination": # Ok-Topk-SP
             # Prepare a vector region for storing the partial sums
             coo_region_partial_sum = [None] * self.comm.size
             for region in range(self.comm.size):
@@ -494,7 +494,7 @@ class OkTopk(Optimizer):
             return sum(coo_region)
             
         
-        if method == "p2p_region_wise_reduce_destination_rotation_and_bucketing":
+        if method == "p2p_region_wise_reduce_destination_rotation_and_bucketing": # Ok-Topk original
             # There are (nprocs - 1) messages to send (excluding self)
             total_sends = self.comm.size - 1
             requests = [None] * total_sends
